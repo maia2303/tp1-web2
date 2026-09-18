@@ -6,7 +6,7 @@ import java.util.Optional;
 
 
 //Interface para declarar qué puede hacer el repositorio pero no como puede hacerlo
-public interface FavoriteRepository {
+public interface FavoritoRepository {
 
     Favorito guardar(Favorito favorito); 
 

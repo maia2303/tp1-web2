@@ -1,6 +1,6 @@
 package com.example.demo.repository;
 
-import com.example.demo.repository.FavoriteRepository;
+import com.example.demo.model.Favorito;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 
 @Repository //le dice a spring que esta clase va a usar datos
-public class MemoryFavRepository implements FavoriteRepository {
+public class MemoryFavRepository implements FavoritoRepository {
 
     private final Map<Long, Favorito> tablaFavorito = new ConcurrentHashMap<>(); //Map almacena pares clave(Long)-valor(Favorito) y ConcurrentHashMap garantiza que si dos o más hilos consultan, se bloquea una única celda (la que se esta modificando) y no toda la tabla
     private final AtomicLong contadorId = new AtomicLong(1); //incrementa el valor de manera atómica garantizando que cada llamado reciba un número único consecutivo
