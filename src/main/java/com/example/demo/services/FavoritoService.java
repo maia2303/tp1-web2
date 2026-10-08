@@ -21,7 +21,8 @@ public class FavoritoService {
             fav.id(),
             fav.productoId(),
             fav.nota(),
-            fav.fechaAgregado()
+            fav.fechaAgregado(),
+            fav.listaId()
         );
     }
         
@@ -37,7 +38,8 @@ public class FavoritoService {
                 null,
                 favoritoRequestDTO.productoId(),
                 favoritoRequestDTO.nota(),
-                LocalDateTime.now()
+                LocalDateTime.now(),
+                favoritoRequestDTO.listaId()
         );
 
         Favorito favoritoGuardado = favoritoRepository.guardar(favorito); //guarda el favorito en el repositorio
@@ -74,7 +76,8 @@ public class FavoritoService {
             id,
             request.productoId(),
             request.nota(),
-            existente.fechaAgregado() //se mantiene la fecha de agregado original
+            existente.fechaAgregado(), //se mantiene la fecha de agregado original
+            request.listaId()
         );
 
         Favorito favoritoGuardado = favoritoRepository.guardar(actualizado);

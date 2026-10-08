@@ -9,5 +9,7 @@ public record FavoritoRequestDTO(
     @Positive(message = "productoId debe ser un número positivo")
     Long productoId,
     @NotBlank(message = "nota no puede estar vacio")
-    String nota
+    String nota,
+    @NotNull(message = "El ID de la lista es obligatorio")
+    Long listaId
 ) { }

@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: webii-postgres
+    environment:
+      POSTGRES_DB: webii_tp2
+      POSTGRES_USER: webii_tp2
+      POSTGRES_PASSWORD: webii_tp2
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
