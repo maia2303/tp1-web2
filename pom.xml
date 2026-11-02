@@ -147,5 +147,14 @@
 			</plugin>
 		</plugins>
 	</build>
-
+	<!-- pom.xml: jacoco-maven-plugin 0.8.15 -->
+	<execution>
+    	<id>preparar-agente</id>
+    	<goals><goal>prepare-agent</goal></goals>
+	</execution>
+	<execution>
+    	<id>reporte</id>
+    	<phase>verify</phase>
+    	<goals><goal>report</goal></goals>
+	</execution>
 </project>
