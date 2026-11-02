@@ -64,4 +64,12 @@ public class GlobalExceptionHandler {
         problem.setTitle("Conflicto al eliminar el recurso");
         return problem;
     }
+
+    @ExceptionHandler(EmailYaRegistradoException.class)
+    public org.springframework.http.ProblemDetail handleEmailYaRegistrado(EmailYaRegistradoException ex) {
+        org.springframework.http.ProblemDetail problem = org.springframework.http.ProblemDetail.forStatusAndDetail(
+            org.springframework.http.HttpStatus.CONFLICT, ex.getMessage());
+        problem.setTitle("Conflicto al registrar usuario");
+        return problem;
+    }
 }

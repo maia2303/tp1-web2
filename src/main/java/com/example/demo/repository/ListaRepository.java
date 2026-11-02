@@ -10,6 +10,8 @@ public interface ListaRepository {
 
     List<Lista> buscarListas();
     
+    List<Lista> buscarPorUsuarioId(Long usuarioId);
+    
     Optional<Lista> buscarPorId(Long id);
     
     boolean existePorId(Long id);

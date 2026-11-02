@@ -49,3 +49,8 @@ No se modifican migraciones anteriores (`V1`, `V2`, `V3`) porque ya fueron aplic
 
 ### Transaccionalidad y Atomicidad (ACID)
 La operación `mover-favoritos` requiere `@Transactional` para garantizar la **Atomicidad** (la 'A' de ACID). Si fallara la eliminación de la lista origen después de haber reasignado los favoritos, sin `@Transactional` la base quedaría en un estado inconsistente parcial (favoritos mudados pero el origen sin borrar). Con `@Transactional`, si cualquier sentencia falla, se ejecuta un rollback automático devolviendo la base a su estado original.
+
+### Autorización y Propiedad de Recursos (Consigna 4.5)
+La lógica de autorización (verificar si el usuario es dueño de la lista o es ADMIN) se implementó en la capa de **Servicio** (`ListaService`).
+Se eligió esta capa en lugar del Controlador porque la propiedad de un recurso es una **regla de negocio fundamental**. Si en el futuro se exponen estas operaciones por otra vía (por ejemplo, eventos internos, tareas programadas o una interfaz CLI), la regla de seguridad debe seguir aplicando. El Controlador debe limitarse a recibir la petición HTTP, no a procesar lógica de propiedad.
+Para lograrlo limpiamente sin ensuciar los parámetros de los métodos, el servicio lee el ID y el rol del usuario directamente del `SecurityContextHolder` inyectado por el filtro JWT.
