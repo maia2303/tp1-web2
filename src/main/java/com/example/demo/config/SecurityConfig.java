@@ -35,6 +35,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**", "/api/productos/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 // Cualquier otro endpoint requerirá estar autenticado (401 si no lo está)
+                .requestMatchers("/health").permitAll()
                 .anyRequest().authenticated()
             )
             // Agregamos nuestro filtro antes del filtro de validación estándar de Spring
