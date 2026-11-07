@@ -5,6 +5,7 @@ import com.example.demo.dto.FavoritoResponseDTO;
 import com.example.demo.services.FavoritoService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import jakarta.validation.Valid;
@@ -17,7 +18,8 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/favoritos")
-@Tag(name = "Favoritos", description = "Operaciones relacionadas a los favoritos de productos")
+@Tag(name = "Favoritos", description = "Operaciones relacionadas a los favoritos de productos. Requiere autenticación JWT (Bearer token).")
+@SecurityRequirement(name = "bearerAuth")
 public class FavoritoController {
     private final FavoritoService favoritoService;
 
@@ -26,7 +28,7 @@ public class FavoritoController {
     }
 
     @PostMapping
-    @Operation(summary = "Agregar favorito", description = "Agrega un producto a la lista de favoritos con una nota opcional")
+    @Operation(summary = "Agregar favorito", description = "Agrega un producto a una lista de favoritos con una nota opcional. Requiere autenticación JWT.")
     public ResponseEntity<FavoritoResponseDTO> crear(@Valid @RequestBody FavoritoRequestDTO favoritoRequestDTO) {
         // Valida el DTO de solicitud y llama al servicio para agregar el favorito
         FavoritoResponseDTO favoritoResponseDTO = favoritoService.agregarFavorito(favoritoRequestDTO);
@@ -35,25 +37,25 @@ public class FavoritoController {
     } 
 
     @GetMapping
-    @Operation(summary = "Listar favoritos", description = "Obtiene una lista de todos los productos marcados como favoritos")
+    @Operation(summary = "Listar favoritos", description = "Obtiene una lista de todos los productos marcados como favoritos. Requiere autenticación JWT.")
     public ResponseEntity<List<FavoritoResponseDTO>> listarFavoritos() {
         return ResponseEntity.ok(favoritoService.listarFavoritos()); // Devuelve un ResponseEntity con la lista de favoritos y el código de estado HTTP 200
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Obtener favorito por ID", description = "Obtiene los detalles de un producto favorito específico utilizando su ID")
+    @Operation(summary = "Obtener favorito por ID", description = "Obtiene los detalles de un producto favorito específico utilizando su ID. Requiere autenticación JWT.")
     public ResponseEntity<FavoritoResponseDTO> obtenerPorId(@PathVariable Long id) {
         return ResponseEntity.ok(favoritoService.obtenerPorId(id)); // Devuelve un ResponseEntity con el favorito encontrado y el código de estado HTTP 200
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Actualizar favorito", description = "Actualiza la nota de un producto favorito específico utilizando su ID")
+    @Operation(summary = "Actualizar favorito", description = "Actualiza la nota de un producto favorito específico utilizando su ID. Requiere autenticación JWT.")
     public ResponseEntity<FavoritoResponseDTO> actualizarFavorito(@PathVariable Long id, @Valid @RequestBody FavoritoRequestDTO favoritoRequestDTO) {
         return ResponseEntity.ok(favoritoService.actualizarFavorito(id, favoritoRequestDTO)); // Devuelve un ResponseEntity con el DTO de solicitud y el código de estado HTTP 200
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Eliminar favorito", description = "Elimina un producto favorito específico utilizando su ID")
+    @Operation(summary = "Eliminar favorito", description = "Elimina un producto favorito específico utilizando su ID. Requiere autenticación JWT.")
     public ResponseEntity<Void> eliminarFavorito(@PathVariable Long id) {
         favoritoService.eliminar(id);
         return ResponseEntity.noContent().build(); // Devuelve un ResponseEntity con el código de estado HTTP 204 (No Content) indicando que la eliminación fue exitosa

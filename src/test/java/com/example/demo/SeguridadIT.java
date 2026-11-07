@@ -24,6 +24,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -46,8 +47,7 @@ class SeguridadIT {
 
     private Long listaUser1Id;
 
-    @Autowired
-    private ObjectMapper objectMapper; // para convertir objetos a JSON y viceversa 
+    private final ObjectMapper objectMapper = new ObjectMapper(); // para convertir objetos a JSON y viceversa 
 
     @Autowired
     private UsuarioJpaRepository usuarioJpaRepository; // para interactuar con la base de datos de usuarios
@@ -79,6 +79,16 @@ class SeguridadIT {
                         .content(objectMapper.writeValueAsString(login))) // convierte el objeto login a JSON y lo agrega al cuerpo de la petición
                 .andReturn();
         return objectMapper.readTree(result.getResponse().getContentAsString()).get("token").asText();
+    }
+
+    @Test
+    void login_conCredencialesValidas_devuelve200ConToken() throws Exception {
+        // metodo para probar que el login con credenciales válidas devuelve 200 OK y un token JWT
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new LoginRequestDTO("ana@test.com", "123456"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isNotEmpty());
     }
 
     @Test
@@ -114,10 +124,18 @@ class SeguridadIT {
     }
 
     @Test
-    void acceder_sinToken_devuelve403() throws Exception {
-        // metodo para probar que un usuario no autenticado no puede acceder a las listas y recibe un estado 403 (prohibido)
+    void acceder_sinToken_devuelve401() throws Exception {
+        // metodo para probar que un usuario no autenticado no puede acceder a las listas y recibe un estado 401 (no autorizado)
         mockMvc.perform(get("/api/listas"))
-                .andExpect(status().isForbidden()); // Spring Security sin AuthEntryPoint custom devuelve 403 por defecto
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void health_sinToken_devuelveEstadoOk() throws Exception {
+        mockMvc.perform(get("/health"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ok"))
+                .andExpect(jsonPath("$.service").value("demo"));
     }
 
     @Test

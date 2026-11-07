@@ -11,21 +11,21 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class OpenApiConfig {
 
-        @Bean
-        public OpenAPI customOpenAPI() {
-                return new OpenAPI()
-                        .info(new Info()
-                        .title("API Web II - TP3")
-                        .version("1.0")
-                        .description("API protegida con JWT"))
-                        // le dice a Swagger que toda la API usa este esquema de seguridad
-                        .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
-                        // definimos como es el esquema (Bearer Token / JWT)
-                        .components(new Components()
-                        .addSecuritySchemes("bearerAuth", new SecurityScheme()
-                                .name("bearerAuth")
-                                .type(SecurityScheme.Type.HTTP)
-                                .scheme("bearer")
-                                .bearerFormat("JWT")));
-        }
+    @Bean
+    public OpenAPI customOpenAPI() {
+        final String securitySchemeName = "bearerAuth";
+        return new OpenAPI()
+                .info(new Info()
+                        .title("API Web II - Favoritos y Listas")
+                        .version("1.0.0")
+                        .description("API REST para la gestión de listas de favoritos con catálogo de productos. **Nota:** Los endpoints de Listas y Favoritos requieren autenticación JWT válida."))
+                .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
+                .components(new Components()
+                        .addSecuritySchemes(securitySchemeName,
+                                new SecurityScheme()
+                                        .name(securitySchemeName)
+                                        .type(SecurityScheme.Type.HTTP)
+                                        .scheme("bearer")
+                                        .bearerFormat("JWT")));
+    }
 }

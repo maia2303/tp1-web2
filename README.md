@@ -50,7 +50,85 @@ No se modifican migraciones anteriores (`V1`, `V2`, `V3`) porque ya fueron aplic
 ### Transaccionalidad y Atomicidad (ACID)
 La operación `mover-favoritos` requiere `@Transactional` para garantizar la **Atomicidad** (la 'A' de ACID). Si fallara la eliminación de la lista origen después de haber reasignado los favoritos, sin `@Transactional` la base quedaría en un estado inconsistente parcial (favoritos mudados pero el origen sin borrar). Con `@Transactional`, si cualquier sentencia falla, se ejecuta un rollback automático devolviendo la base a su estado original.
 
-### Autorización y Propiedad de Recursos (Consigna 4.5)
-La lógica de autorización (verificar si el usuario es dueño de la lista o es ADMIN) se implementó en la capa de **Servicio** (`ListaService`).
+---
+
+# Seguridad, pruebas e integración continua - Trabajo Práctico 3
+
+## Autorización y Propiedad de Recursos (Consigna 4.5)
+La lógica de autorización (verificar si el usuario es dueño de la lista o es `ADMIN`) se implementó en la capa de **Servicio** (`ListaService`).
 Se eligió esta capa en lugar del Controlador porque la propiedad de un recurso es una **regla de negocio fundamental**. Si en el futuro se exponen estas operaciones por otra vía (por ejemplo, eventos internos, tareas programadas o una interfaz CLI), la regla de seguridad debe seguir aplicando. El Controlador debe limitarse a recibir la petición HTTP, no a procesar lógica de propiedad.
-Para lograrlo limpiamente sin ensuciar los parámetros de los métodos, el servicio lee el ID y el rol del usuario directamente del `SecurityContextHolder` inyectado por el filtro JWT.
+Para lograrlo limpiamente sin ensuciar los parámetros de los métodos, el servicio lee el ID y el rol del usuario directamente del `SecurityContextHolder` inyectado por el filtro JWT (`JwtAuthenticationFilter`).
+
+## Cómo correr los tests
+
+El proyecto cuenta con pruebas unitarias (`ListaServiceTest`, `UsuarioServiceTest`) y pruebas de integración (`SeguridadIT`) que levantan un contenedor real de PostgreSQL con **Testcontainers** y ejecutan todas las migraciones de **Flyway** (`V1` a `V6`) desde cero.
+
+### Requisitos previos
+- **Java 25** instalado y configurado.
+- **Docker Desktop** (o el daemon de Docker) en ejecución, ya que Testcontainers levanta automáticamente una imagen `postgres:16-alpine` durante las pruebas de integración.
+
+### Comandos
+- Para ejecutar las pruebas (unitarias + integración) y generar el reporte de cobertura con JaCoCo desde la terminal:
+  ```bash
+  ./mvnw test
+  ```
+  *(En Windows PowerShell o CMD: `.\mvnw.cmd test`)*
+- Para ver el reporte visual de porcentaje de cobertura de JaCoCo:
+  Abrí en el navegador el archivo generado en:
+  ```text
+  target/site/jacoco/index.html
+  ```
+- Para ejecutar el ciclo completo de verificación:
+  ```bash
+  ./mvnw verify
+  ```
+
+## Integración Continua (CI) y cómo leer el resultado
+
+El flujo de integración continua está configurado en `.github/workflows/ci.yml` mediante **GitHub Actions** y se dispara automáticamente en cada `push` y `pull_request` al repositorio.
+
+### Qué hace el pipeline
+1. Descarga el código del repositorio (`actions/checkout`).
+2. Configura **Java 25 (Temurin)** y la caché de dependencias de Maven (`actions/setup-java`).
+3. Compila el proyecto y las clases de prueba (`./mvnw -B test-compile`).
+4. Ejecuta las pruebas unitarias y de integración con Testcontainers + Flyway (`./mvnw -B test` y `./mvnw -B verify`).
+
+### Cómo leer el resultado en GitHub
+1. Ingresá a la pestaña **Actions** del repositorio en GitHub.
+2. En el listado de ejecuciones del workflow **"CI - Compilacion y pruebas"**, observá el ícono de estado de cada commit:
+   - **Check verde (Success)**: el proyecto compiló, Flyway aplicó todas las migraciones contra la base limpia en Docker y todos los tests pasaron.
+   - **Cruz roja (Failure)**: algún paso falló (error de compilación, migración inválida o algún test roto).
+3. Haciendo clic sobre la corrida y luego sobre el job **"Compilar y probar"**, podés desplegar cada paso (`2. Pruebas unitarias`, `3. Pruebas de integración y cobertura`) para inspeccionar los logs detallados de Maven y JUnit.
+
+## Pasos de despliegue
+
+La aplicación se empaqueta mediante un `Dockerfile` multi-etapa (compilación con `eclipse-temurin:25-jdk` y ejecución ligera con `eclipse-temurin:25-jre`) y se despliega en **Render** (definido también como Blueprint en `render.yaml`) conectado a una base de datos PostgreSQL remota:
+
+1. **Preparación de variables de entorno**:
+   En `application.properties` se parametrizaron las credenciales sensibles con valores por defecto para entorno local:
+   - `DB_URL`: URL JDBC de conexión a PostgreSQL (`jdbc:postgresql://<host>:<puerto>/<db>`).
+   - `DB_USERNAME`: usuario de la base de datos remota.
+   - `DB_PASSWORD`: contraseña de la base de datos remota.
+   - `JWT_SECRET`: clave secreta de al menos 32 bytes para firmar y validar los tokens JWT.
+   - `PORT`: puerto inyectado por el proveedor cloud (por defecto `8080`).
+2. **Creación de la base de datos PostgreSQL**:
+   Se aprovisionó una instancia gratuita de PostgreSQL (`web2-db`) en el proveedor cloud y se obtuvieron sus credenciales de conexión interna.
+3. **Creación y configuración del Web Service**:
+   - Se vinculó el repositorio de GitHub eligiendo el runtime **Docker** (`./Dockerfile`).
+   - Se cargaron las variables de entorno `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` y `JWT_SECRET` en el panel de configuración del servicio.
+   - Se configuró el health check apuntando a `/health`.
+4. **Verificación del despliegue**:
+   - Al iniciar el contenedor, **Flyway** ejecutó automáticamente las migraciones `V1` a `V6` sobre la base remota limpia (verificado en los logs de inicio del servicio).
+   - Se comprobó el estado del servicio realizando `GET /health` sobre la URL pública (`200 OK`).
+   - Se verificó la seguridad consultando `GET /api/listas` sin token (`401 Unauthorized`) y luego autenticándose en `POST /api/auth/login` para consultar con `Authorization: Bearer <token>` (`200 OK`).
+
+
+
+## Ejecución de Pruebas (Testing)
+
+El proyecto incluye una suite de pruebas unitarias y de integración. Las pruebas de integración utilizan **Testcontainers** para levantar una base de datos PostgreSQL real efímera y **Flyway** para aplicar las migraciones automáticamente antes de ejecutar los tests.
+
+Para ejecutar todas las pruebas localmente, asegurate de tener Docker iniciado (requerido por Testcontainers) y ejecutá el siguiente comando en la raíz del proyecto:
+
+```bash
+./mvnw test
