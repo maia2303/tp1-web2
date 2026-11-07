@@ -61,74 +61,101 @@ Para lograrlo limpiamente sin ensuciar los parámetros de los métodos, el servi
 
 ## Cómo correr los tests
 
-El proyecto cuenta con pruebas unitarias (`ListaServiceTest`, `UsuarioServiceTest`) y pruebas de integración (`SeguridadIT`) que levantan un contenedor real de PostgreSQL con **Testcontainers** y ejecutan todas las migraciones de **Flyway** (`V1` a `V6`) desde cero.
+El proyecto incluye una suite de pruebas unitarias (`ListaServiceTest`, `UsuarioServiceTest`) y pruebas de integración (`SeguridadIT`). Las pruebas de integración utilizan **Testcontainers** para levantar una base de datos PostgreSQL real efímera y **Flyway** para aplicar las migraciones (`V1` a `V6`) automáticamente desde cero antes de ejecutar los tests.
 
 ### Requisitos previos
 - **Java 25** instalado y configurado.
-- **Docker Desktop** (o el daemon de Docker) en ejecución, ya que Testcontainers levanta automáticamente una imagen `postgres:16-alpine` durante las pruebas de integración.
+- **Docker Desktop** iniciado (requerido por Testcontainers para levantar el contenedor de PostgreSQL).
 
 ### Comandos
-- Para ejecutar las pruebas (unitarias + integración) y generar el reporte de cobertura con JaCoCo desde la terminal:
+- Para ejecutar todas las pruebas localmente (unitarias + integración) y generar el reporte de cobertura con JaCoCo:
   ```bash
   ./mvnw test
   ```
   *(En Windows PowerShell o CMD: `.\mvnw.cmd test`)*
-- Para ver el reporte visual de porcentaje de cobertura de JaCoCo:
-  Abrí en el navegador el archivo generado en:
-  ```text
-  target/site/jacoco/index.html
-  ```
 - Para ejecutar el ciclo completo de verificación:
   ```bash
-  ./mvnw verify
+  ./mvnw clean verify
+  ```
+- Para visualizar el reporte de porcentaje de cobertura de **JaCoCo** en el navegador:
+  ```text
+  target/site/jacoco/index.html
   ```
 
 ## Integración Continua (CI) y cómo leer el resultado
 
 El flujo de integración continua está configurado en `.github/workflows/ci.yml` mediante **GitHub Actions** y se dispara automáticamente en cada `push` y `pull_request` al repositorio.
 
+# **Link a la corrida exitosa del workflow en GitHub Actions:**  
+**[https://github.com/maia2303/tp1-web2/actions/runs/42328947065/job/128270746432](https://github.com/maia2303/tp1-web2/actions/runs/42328947065/job/128270746432)**
+
 ### Qué hace el pipeline
 1. Descarga el código del repositorio (`actions/checkout`).
 2. Configura **Java 25 (Temurin)** y la caché de dependencias de Maven (`actions/setup-java`).
 3. Compila el proyecto y las clases de prueba (`./mvnw -B test-compile`).
 4. Ejecuta las pruebas unitarias y de integración con Testcontainers + Flyway (`./mvnw -B test` y `./mvnw -B verify`).
+5. Sube el reporte de cobertura de JaCoCo (`target/site/jacoco`) como artefacto (`reporte-de-cobertura`).
 
 ### Cómo leer el resultado en GitHub
 1. Ingresá a la pestaña **Actions** del repositorio en GitHub.
 2. En el listado de ejecuciones del workflow **"CI - Compilacion y pruebas"**, observá el ícono de estado de cada commit:
-   - **Check verde (Success)**: el proyecto compiló, Flyway aplicó todas las migraciones contra la base limpia en Docker y todos los tests pasaron.
-   - **Cruz roja (Failure)**: algún paso falló (error de compilación, migración inválida o algún test roto).
-3. Haciendo clic sobre la corrida y luego sobre el job **"Compilar y probar"**, podés desplegar cada paso (`2. Pruebas unitarias`, `3. Pruebas de integración y cobertura`) para inspeccionar los logs detallados de Maven y JUnit.
+   - **Check verde (✓)**: el proyecto compiló, Flyway aplicó todas las migraciones contra la base limpia en Docker y todos los tests pasaron.
+   - **Cruz roja (✗)**: algún paso falló (error de compilación, migración inválida o algún test roto).
+3. Haciendo clic sobre la corrida y luego sobre el job **"Compilar y probar"**, podés desplegar cada paso (`1. Compilar...`, `2. Pruebas unitarias`, `3. Pruebas de integración y cobertura`) para inspeccionar los logs detallados de Maven y JUnit, y al final de la página descargar el artefacto `reporte-de-cobertura`.
 
 ## Pasos de despliegue
 
-La aplicación se empaqueta mediante un `Dockerfile` multi-etapa (compilación con `eclipse-temurin:25-jdk` y ejecución ligera con `eclipse-temurin:25-jre`) y se despliega en **Render** (definido también como Blueprint en `render.yaml`) conectado a una base de datos PostgreSQL remota:
+La aplicación se empaqueta mediante un `Dockerfile` multi-etapa (compilación con `eclipse-temurin:25-jdk` y ejecución ligera con `eclipse-temurin:25-jre`) y se despliega automáticamente en **Render** mediante el Blueprint definido en `render.yaml`, conectado a una base de datos PostgreSQL remota.
 
+# **URL pública del despliegue:**  
+**[https://web2-demo-w4ut.onrender.com](https://web2-demo-w4ut.onrender.com)**  
+# **Swagger UI en producción:**  
+**[https://web2-demo-w4ut.onrender.com/swagger-ui/index.html](https://web2-demo-w4ut.onrender.com/swagger-ui/index.html)**  
+# **Endpoint de estado (`/health`):**  
+**[https://web2-demo-w4ut.onrender.com/health](https://web2-demo-w4ut.onrender.com/health)**
+
+### Pasos seguidos
 1. **Preparación de variables de entorno**:
-   En `application.properties` se parametrizaron las credenciales sensibles con valores por defecto para entorno local:
-   - `DB_URL`: URL JDBC de conexión a PostgreSQL (`jdbc:postgresql://<host>:<puerto>/<db>`).
-   - `DB_USERNAME`: usuario de la base de datos remota.
-   - `DB_PASSWORD`: contraseña de la base de datos remota.
-   - `JWT_SECRET`: clave secreta de al menos 32 bytes para firmar y validar los tokens JWT.
-   - `PORT`: puerto inyectado por el proveedor cloud (por defecto `8080`).
-2. **Creación de la base de datos PostgreSQL**:
-   Se aprovisionó una instancia gratuita de PostgreSQL (`web2-db`) en el proveedor cloud y se obtuvieron sus credenciales de conexión interna.
-3. **Creación y configuración del Web Service**:
-   - Se vinculó el repositorio de GitHub eligiendo el runtime **Docker** (`./Dockerfile`).
-   - Se cargaron las variables de entorno `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` y `JWT_SECRET` en el panel de configuración del servicio.
-   - Se configuró el health check apuntando a `/health`.
+   En `application.properties` se parametrizaron los datos sensibles con `${VARIABLE:valorPorDefecto}` para mantener el funcionamiento local sin configuración extra:
+   - `DB_URL`: URL JDBC de conexión a PostgreSQL (`jdbc:postgresql://HOSTNAME:5432/DATABASE?sslmode=require`).
+   - `DB_USERNAME`: usuario de la base de datos remota (`web2-db`).
+   - `DB_PASSWORD`: contraseña de la base de datos remota (`web2-db`).
+   - `JWT_SECRET`: clave secreta generada para firmar y validar los tokens JWT.
+   - `PORT`: puerto asignado por Render (por defecto `8080` en local).
+2. **Creación del Blueprint en Render (`render.yaml`)**:
+   - Se vinculó el repositorio de GitHub a Render (rama `main`) mediante **New → Blueprint**.
+   - Render aprovisionó automáticamente la base de datos PostgreSQL (`web2-db`) y el Web Service Docker (`web2-demo`) con `healthCheckPath: /health` y `autoDeployTrigger: checksPass` (despliega solo cuando el CI de GitHub pasa en verde).
+3. **Configuración de `DB_URL` y puesta en línea**:
+   - Una vez creada la base `web2-db`, se tomó su hostname interno y nombre de base para completar la variable de entorno `DB_URL` en formato JDBC dentro de **Environment** del servicio `web2-demo`, disparando el despliegue.
 4. **Verificación del despliegue**:
-   - Al iniciar el contenedor, **Flyway** ejecutó automáticamente las migraciones `V1` a `V6` sobre la base remota limpia (verificado en los logs de inicio del servicio).
-   - Se comprobó el estado del servicio realizando `GET /health` sobre la URL pública (`200 OK`).
-   - Se verificó la seguridad consultando `GET /api/listas` sin token (`401 Unauthorized`) y luego autenticándose en `POST /api/auth/login` para consultar con `Authorization: Bearer <token>` (`200 OK`).
+   - En la pestaña **Logs** de Render se verificó que **Flyway** aplicó las migraciones `V1` a `V6` sobre la base remota y que el servicio inició sin errores (`Your service is live`).
+   - Se verificó `GET /health` respondiendo `200 OK`.
+   - Se verificó que `GET /api/listas` responde `401 Unauthorized` sin token y `200 OK` al autenticarse con un token JWT válido.
 
+## Evidencias del Trabajo Práctico 3
 
+Las capturas de evidencia se encuentran en `src/main/java/com/example/demo/evidencia/`:
 
-## Ejecución de Pruebas (Testing)
+1. **Suite de tests en verde en la terminal local (`./mvnw test`)**:
+   ![Tests en terminal](src/main/java/com/example/demo/evidencia/testTerminal.png)
 
-El proyecto incluye una suite de pruebas unitarias y de integración. Las pruebas de integración utilizan **Testcontainers** para levantar una base de datos PostgreSQL real efímera y **Flyway** para aplicar las migraciones automáticamente antes de ejecutar los tests.
+2. **Reporte de cobertura con JaCoCo (`target/site/jacoco/index.html`)**:
+   ![Reporte JaCoCo](src/main/java/com/example/demo/evidencia/testJaCoCo.png)
 
-Para ejecutar todas las pruebas localmente, asegurate de tener Docker iniciado (requerido por Testcontainers) y ejecutá el siguiente comando en la raíz del proyecto:
+3. **Pipeline de Integración Continua (GitHub Actions) en verde**:
+   ![GitHub Actions en verde](src/main/java/com/example/demo/evidencia/actions.png)
 
-```bash
-./mvnw test
+4. **Endpoint de estado `GET /health` respondiendo `200 OK`**:
+   ![Health 200 OK](src/main/java/com/example/demo/evidencia/health200.png)
+
+5. **Protección del sitio en producción (`401 Unauthorized` sin token)**:
+   ![401 en raíz del sitio](src/main/java/com/example/demo/evidencia/401Sitio.png)
+
+6. **Endpoint protegido `GET /api/listas` sin token respondiendo `401 Unauthorized`**:
+   ![GET /api/listas sin token - 401](src/main/java/com/example/demo/evidencia/get401.png)
+
+7. **Endpoint protegido `GET /api/listas` con token JWT válido respondiendo `200 OK`**:
+   ![GET /api/listas con token - 200](src/main/java/com/example/demo/evidencia/getListaAuth.png)
+
+8. **Registro con email duplicado `POST /api/auth/registro` respondiendo `409 Conflict`**:
+   ![POST /api/auth/registro - 409 Conflict](src/main/java/com/example/demo/evidencia/409Conflict.png)
