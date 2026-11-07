@@ -10,4 +10,4 @@ WORKDIR /app
 RUN groupadd --system app && useradd --system --gid app app
 COPY --from=build /app/target/*.jar app.jar
 USER app
-ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-XX:TieredStopAtLevel=1", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]
